@@ -15,7 +15,7 @@ export function isAllowedUpstream(hostname) {
         return true;
     }
     // 允许所有 .hf.co 结尾的 CDN 节点
-    if (hostname.endsWith('.hf.co')) {
+    if (hostname.endsWith('.hf.co') || hostname.endsWith('.hf.space')) {
         return true;
     }
     return false;

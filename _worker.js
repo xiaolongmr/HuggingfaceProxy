@@ -20,7 +20,7 @@ function isAllowedUpstream(hostname) {
   if (ALLOWED_UPSTREAM_DOMAINS.includes(hostname)) {
     return true;
   }
-  if (hostname.endsWith(".hf.co")) {
+  if (hostname.endsWith(".hf.co") || hostname.endsWith(".hf.space")) {
     return true;
   }
   return false;
