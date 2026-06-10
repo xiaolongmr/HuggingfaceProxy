@@ -1,3 +1,6 @@
-name = "hf-proxy"
+name = "huggingfaceproxy"
+main = "_worker.js"
 compatibility_date = "2025-01-01"
-pages_build_output_dir = "."
+
+[vars]
+RESTRICT_BROWSER_ACCESS = "false"
