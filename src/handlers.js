@@ -119,9 +119,7 @@ export async function handleProxy(request, url, env = {}) {
 
         if (shouldCache && response.ok) {
             const newHeaders = new Headers(response.headers);
-            if (!newHeaders.has('Cache-Control')) {
-                newHeaders.set('Cache-Control', `public, max-age=${getBrowserCacheTtl(env)}`);
-            }
+            newHeaders.set('Cache-Control', `public, max-age=${getBrowserCacheTtl(env)}, immutable`);
             newHeaders.set('X-HF-Proxy-Cache', `edge; ttl=${getEdgeCacheTtl(env)}`);
             return new Response(response.body, {
                 status: response.status,

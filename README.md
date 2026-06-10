@@ -132,6 +132,14 @@ Worker 会对 `*.hf.space` 和 `*.hf.co` 下的常见静态资源启用 Cloudfla
 | Cloudflare Edge | 30 天 | `EDGE_CACHE_TTL_DAYS=30` |
 | 浏览器 | 30 天 | `BROWSER_CACHE_TTL_DAYS=30` |
 
+静态资源响应会覆盖源站的 `Cache-Control`，返回类似：
+
+```text
+Cache-Control: public, max-age=2592000, immutable
+```
+
+这样生成后 URL 不变的图片会更稳定地进入浏览器本地缓存。
+
 如果想改成其他天数，直接填写天数即可，例如浏览器缓存 14 天：
 
 ```bash
