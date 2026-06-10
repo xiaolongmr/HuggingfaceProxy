@@ -107,6 +107,12 @@ Space 项目入口也可以代理，例如你的项目：
 https://your-proxy.com/redirect_to_zlcy-li.hf.space/
 ```
 
+也可以省略最后的 `/`：
+
+```bash
+https://your-proxy.com/redirect_to_zlcy-li.hf.space
+```
+
 这会转发到：
 
 ```bash
@@ -218,6 +224,7 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 | `/bert-base/resolve/main/config.json` | `huggingface.co/bert-base/resolve/main/config.json` |
 | `/redirect_to_cdn.hf.co/path/file` | `cdn.hf.co/path/file` |
 | `/redirect_to_zlcy-li.hf.space/` | `zlcy-li.hf.space/` |
+| `/redirect_to_zlcy-li.hf.space` | `zlcy-li.hf.space/` |
 | `/redirect_to_xxx.hf.space/images/a.png` | `xxx.hf.space/images/a.png` |
 
 ### 重定向处理

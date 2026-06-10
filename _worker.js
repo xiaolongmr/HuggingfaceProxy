@@ -1,6 +1,6 @@
 /**
  * HuggingFace Proxy Worker
- * 构建时间: 2026-06-10T17:59:05.175Z
+ * 构建时间: 2026-06-10T18:05:10.679Z
  * 
  * 此文件由 build.js 自动生成，请勿手动编辑
  * 源代码位于 src/ 目录
@@ -54,12 +54,12 @@ function isAllowedUpstream(hostname) {
   return false;
 }
 function parseRequest(pathname) {
-  const prefixPattern = new RegExp(`^/${REDIRECT_PREFIX}([^/]+)(/.*)$`);
+  const prefixPattern = new RegExp(`^/${REDIRECT_PREFIX}([^/]+)(/.*)?$`);
   const match = pathname.match(prefixPattern);
   if (match) {
     return {
       upstream: match[1],
-      path: match[2]
+      path: match[2] || "/"
     };
   }
   return {

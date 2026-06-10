@@ -36,15 +36,15 @@ export function isAllowedUpstream(hostname) {
  */
 export function parseRequest(pathname) {
     // 检查是否有 redirect_to_ 前缀
-    // 格式: /redirect_to_{domain}/path/to/resource
-    const prefixPattern = new RegExp(`^/${REDIRECT_PREFIX}([^/]+)(/.*)$`);
+    // 格式: /redirect_to_{domain} 或 /redirect_to_{domain}/path/to/resource
+    const prefixPattern = new RegExp(`^/${REDIRECT_PREFIX}([^/]+)(/.*)?$`);
     const match = pathname.match(prefixPattern);
     
     if (match) {
         // 有前缀，提取域名和路径
         return {
             upstream: match[1],
-            path: match[2]
+            path: match[2] || '/'
         };
     }
     
