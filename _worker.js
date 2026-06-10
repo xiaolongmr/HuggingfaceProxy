@@ -1,6 +1,6 @@
 /**
  * HuggingFace Proxy Worker
- * 构建时间: 2026-06-10T17:51:52.755Z
+ * 构建时间: 2026-06-10T17:59:05.175Z
  * 
  * 此文件由 build.js 自动生成，请勿手动编辑
  * 源代码位于 src/ 目录
@@ -14,8 +14,9 @@ var ALLOWED_UPSTREAM_DOMAINS = [
 ];
 var DEFAULT_UPSTREAM = "huggingface.co";
 var REDIRECT_PREFIX = "redirect_to_";
-var DEFAULT_EDGE_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
-var DEFAULT_BROWSER_CACHE_TTL_SECONDS = 60 * 60 * 24;
+var SECONDS_PER_DAY = 60 * 60 * 24;
+var DEFAULT_EDGE_CACHE_TTL_SECONDS = SECONDS_PER_DAY * 30;
+var DEFAULT_BROWSER_CACHE_TTL_SECONDS = SECONDS_PER_DAY * 30;
 var STATIC_CACHE_EXTENSIONS = [
   ".png",
   ".jpg",
@@ -66,15 +67,26 @@ function parseRequest(pathname) {
     path: pathname
   };
 }
-function parsePositiveInteger(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+function parseNonNegativeNumber(value) {
+  if (value === void 0 || value === null || value === "") {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+function parseTtlSeconds(value, fallback) {
+  const parsed = parseNonNegativeNumber(value);
+  return parsed === null ? fallback : Math.floor(parsed);
+}
+function parseTtlDays(value) {
+  const parsed = parseNonNegativeNumber(value);
+  return parsed === null ? null : Math.floor(parsed * SECONDS_PER_DAY);
 }
 function getEdgeCacheTtl(env) {
-  return parsePositiveInteger(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
+  return parseTtlDays(env?.EDGE_CACHE_TTL_DAYS) ?? parseTtlSeconds(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
 }
 function getBrowserCacheTtl(env) {
-  return parsePositiveInteger(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
+  return parseTtlDays(env?.BROWSER_CACHE_TTL_DAYS) ?? parseTtlSeconds(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
 }
 function isStaticCachePath(path) {
   const lowerPath = path.toLowerCase();

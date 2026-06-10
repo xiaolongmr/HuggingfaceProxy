@@ -8,6 +8,7 @@ import {
     DEFAULT_EDGE_CACHE_TTL_SECONDS,
     DEFAULT_UPSTREAM,
     REDIRECT_PREFIX,
+    SECONDS_PER_DAY,
     STATIC_CACHE_EXTENSIONS
 } from './config.js';
 
@@ -55,14 +56,37 @@ export function parseRequest(pathname) {
 }
 
 /**
- * 获取正整数环境变量
+ * 获取非负数字环境变量
+ * @param {unknown} value - 环境变量值
+ * @returns {number | null}
+ */
+function parseNonNegativeNumber(value) {
+    if (value === undefined || value === null || value === '') {
+        return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+/**
+ * 获取非负秒数环境变量
  * @param {unknown} value - 环境变量值
  * @param {number} fallback - 默认值
  * @returns {number}
  */
-function parsePositiveInteger(value, fallback) {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+function parseTtlSeconds(value, fallback) {
+    const parsed = parseNonNegativeNumber(value);
+    return parsed === null ? fallback : Math.floor(parsed);
+}
+
+/**
+ * 获取天数环境变量并转换为秒
+ * @param {unknown} value - 环境变量值
+ * @returns {number | null}
+ */
+function parseTtlDays(value) {
+    const parsed = parseNonNegativeNumber(value);
+    return parsed === null ? null : Math.floor(parsed * SECONDS_PER_DAY);
 }
 
 /**
@@ -71,7 +95,8 @@ function parsePositiveInteger(value, fallback) {
  * @returns {number}
  */
 export function getEdgeCacheTtl(env) {
-    return parsePositiveInteger(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
+    return parseTtlDays(env?.EDGE_CACHE_TTL_DAYS)
+        ?? parseTtlSeconds(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
 }
 
 /**
@@ -80,7 +105,8 @@ export function getEdgeCacheTtl(env) {
  * @returns {number}
  */
 export function getBrowserCacheTtl(env) {
-    return parsePositiveInteger(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
+    return parseTtlDays(env?.BROWSER_CACHE_TTL_DAYS)
+        ?? parseTtlSeconds(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
 }
 
 /**

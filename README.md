@@ -122,19 +122,19 @@ Worker 会对 `*.hf.space` 和 `*.hf.co` 下的常见静态资源启用 Cloudfla
 
 | 缓存位置 | 默认 TTL | 环境变量 |
 |---------|---------|---------|
-| Cloudflare Edge | 7 天 | `EDGE_CACHE_TTL_SECONDS=604800` |
-| 浏览器 | 1 天 | `BROWSER_CACHE_TTL_SECONDS=86400` |
+| Cloudflare Edge | 30 天 | `EDGE_CACHE_TTL_DAYS=30` |
+| 浏览器 | 30 天 | `BROWSER_CACHE_TTL_DAYS=30` |
 
-如果图片生成后基本不会变化，可以把边缘缓存改成 30 天：
+如果想改成其他天数，直接填写天数即可，例如浏览器缓存 14 天：
 
 ```bash
-EDGE_CACHE_TTL_SECONDS=2592000
+BROWSER_CACHE_TTL_DAYS=14
 ```
 
 如果需要关闭 Worker 里的边缘缓存：
 
 ```bash
-EDGE_CACHE_TTL_SECONDS=0
+EDGE_CACHE_TTL_DAYS=0
 ```
 
 也可以在 Cloudflare Dashboard 里再加一条 Cache Rule：
@@ -146,8 +146,8 @@ When incoming requests match:
 
 Then:
   Cache eligibility: Eligible for cache
-  Edge TTL: 7 days 或 1 month
-  Browser TTL: 1 day
+  Edge TTL: 1 month
+  Browser TTL: 1 month
 ```
 
 ### 使用下载器脚本
@@ -238,8 +238,10 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 | 变量名 | 说明 | 可选值 |
 |--------|------|--------|
 | `RESTRICT_BROWSER_ACCESS` | 限制浏览器直接访问代理 | `true` / `false` (未设置默认为 `false`) |
-| `EDGE_CACHE_TTL_SECONDS` | 静态资源边缘缓存秒数 | 默认 `604800`，7 天；30 天为 `2592000`；`0` 为关闭 |
-| `BROWSER_CACHE_TTL_SECONDS` | 静态资源浏览器缓存秒数 | 默认 `86400`，1 天 |
+| `EDGE_CACHE_TTL_DAYS` | 静态资源边缘缓存天数 | 默认 `30`；`0` 为关闭 |
+| `BROWSER_CACHE_TTL_DAYS` | 静态资源浏览器缓存天数 | 默认 `30` |
+| `EDGE_CACHE_TTL_SECONDS` | 静态资源边缘缓存秒数 | 兼容旧配置；优先级低于 `EDGE_CACHE_TTL_DAYS` |
+| `BROWSER_CACHE_TTL_SECONDS` | 静态资源浏览器缓存秒数 | 兼容旧配置；优先级低于 `BROWSER_CACHE_TTL_DAYS` |
 
 - `RESTRICT_BROWSER_ACCESS=true` 时，浏览器只能访问首页 (`/`) 和脚本下载页面 (`/hf_downloader.py`)，其他路径将被拒绝
 - 适用于希望限制浏览器直接下载，强制使用 Python 脚本的场景
