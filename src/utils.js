@@ -2,7 +2,14 @@
  * 工具函数
  */
 
-import { ALLOWED_UPSTREAM_DOMAINS, DEFAULT_UPSTREAM, REDIRECT_PREFIX } from './config.js';
+import {
+    ALLOWED_UPSTREAM_DOMAINS,
+    DEFAULT_BROWSER_CACHE_TTL_SECONDS,
+    DEFAULT_EDGE_CACHE_TTL_SECONDS,
+    DEFAULT_UPSTREAM,
+    REDIRECT_PREFIX,
+    STATIC_CACHE_EXTENSIONS
+} from './config.js';
 
 /**
  * 判断是否是允许的上游域名
@@ -45,6 +52,67 @@ export function parseRequest(pathname) {
         upstream: DEFAULT_UPSTREAM,
         path: pathname
     };
+}
+
+/**
+ * 获取正整数环境变量
+ * @param {unknown} value - 环境变量值
+ * @param {number} fallback - 默认值
+ * @returns {number}
+ */
+function parsePositiveInteger(value, fallback) {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+/**
+ * 获取边缘缓存 TTL
+ * @param {Record<string, string> | undefined} env - 环境变量
+ * @returns {number}
+ */
+export function getEdgeCacheTtl(env) {
+    return parsePositiveInteger(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
+}
+
+/**
+ * 获取浏览器缓存 TTL
+ * @param {Record<string, string> | undefined} env - 环境变量
+ * @returns {number}
+ */
+export function getBrowserCacheTtl(env) {
+    return parsePositiveInteger(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
+}
+
+/**
+ * 判断路径是否为可缓存静态资源
+ * @param {string} path - 请求路径
+ * @returns {boolean}
+ */
+export function isStaticCachePath(path) {
+    const lowerPath = path.toLowerCase();
+    return STATIC_CACHE_EXTENSIONS.some((extension) => lowerPath.endsWith(extension));
+}
+
+/**
+ * 判断代理请求是否应启用边缘缓存
+ * @param {Request} request - 请求对象
+ * @param {string} upstream - 上游域名
+ * @param {string} path - 上游路径
+ * @param {Record<string, string> | undefined} env - 环境变量
+ * @returns {boolean}
+ */
+export function shouldCacheProxyRequest(request, upstream, path, env) {
+    const method = request.method.toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+        return false;
+    }
+
+    if (getEdgeCacheTtl(env) <= 0) {
+        return false;
+    }
+
+    const isHfAssetHost = upstream.endsWith('.hf.space') || upstream.endsWith('.hf.co');
+    return isHfAssetHost && isStaticCachePath(path);
 }
 
 /**

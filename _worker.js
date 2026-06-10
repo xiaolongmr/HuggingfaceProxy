@@ -1,6 +1,6 @@
 /**
  * HuggingFace Proxy Worker
- * 构建时间: 2026-04-20T14:41:10.285Z
+ * 构建时间: 2026-06-10T17:51:52.755Z
  * 
  * 此文件由 build.js 自动生成，请勿手动编辑
  * 源代码位于 src/ 目录
@@ -14,6 +14,33 @@ var ALLOWED_UPSTREAM_DOMAINS = [
 ];
 var DEFAULT_UPSTREAM = "huggingface.co";
 var REDIRECT_PREFIX = "redirect_to_";
+var DEFAULT_EDGE_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+var DEFAULT_BROWSER_CACHE_TTL_SECONDS = 60 * 60 * 24;
+var STATIC_CACHE_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".svg",
+  ".ico",
+  ".css",
+  ".js",
+  ".mjs",
+  ".json",
+  ".txt",
+  ".xml",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".otf",
+  ".eot",
+  ".mp4",
+  ".webm",
+  ".mp3",
+  ".wav"
+];
 
 // src/utils.js
 function isAllowedUpstream(hostname) {
@@ -38,6 +65,31 @@ function parseRequest(pathname) {
     upstream: DEFAULT_UPSTREAM,
     path: pathname
   };
+}
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+function getEdgeCacheTtl(env) {
+  return parsePositiveInteger(env?.EDGE_CACHE_TTL_SECONDS, DEFAULT_EDGE_CACHE_TTL_SECONDS);
+}
+function getBrowserCacheTtl(env) {
+  return parsePositiveInteger(env?.BROWSER_CACHE_TTL_SECONDS, DEFAULT_BROWSER_CACHE_TTL_SECONDS);
+}
+function isStaticCachePath(path) {
+  const lowerPath = path.toLowerCase();
+  return STATIC_CACHE_EXTENSIONS.some((extension) => lowerPath.endsWith(extension));
+}
+function shouldCacheProxyRequest(request, upstream, path, env) {
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+  if (getEdgeCacheTtl(env) <= 0) {
+    return false;
+  }
+  const isHfAssetHost = upstream.endsWith(".hf.space") || upstream.endsWith(".hf.co");
+  return isHfAssetHost && isStaticCachePath(path);
 }
 function rewriteLocation(location, proxyOrigin) {
   try {
@@ -841,7 +893,7 @@ function handleDownloaderScript(hostname) {
     }
   });
 }
-async function handleProxy(request, url) {
+async function handleProxy(request, url, env = {}) {
   const pathname = url.pathname;
   const proxyOrigin = url.origin;
   const { upstream, path } = parseRequest(pathname);
@@ -858,8 +910,10 @@ async function handleProxy(request, url) {
     // 【关键】手动拦截重定向
   });
   newRequest.headers.set("Host", upstream);
+  const shouldCache = shouldCacheProxyRequest(request, upstream, path, env);
+  const fetchOptions = shouldCache ? { cf: { cacheEverything: true, cacheTtl: getEdgeCacheTtl(env) } } : void 0;
   try {
-    const response = await fetch(newRequest);
+    const response = await fetch(newRequest, fetchOptions);
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
       if (location) {
@@ -874,6 +928,18 @@ async function handleProxy(request, url) {
           });
         }
       }
+    }
+    if (shouldCache && response.ok) {
+      const newHeaders = new Headers(response.headers);
+      if (!newHeaders.has("Cache-Control")) {
+        newHeaders.set("Cache-Control", `public, max-age=${getBrowserCacheTtl(env)}`);
+      }
+      newHeaders.set("X-HF-Proxy-Cache", `edge; ttl=${getEdgeCacheTtl(env)}`);
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
     }
     return response;
   } catch (e) {
@@ -901,7 +967,7 @@ var index_default = {
         return handleDownloaderScript(hostname);
       // 代理请求
       default:
-        return handleProxy(request, url);
+        return handleProxy(request, url, env);
     }
   }
 };

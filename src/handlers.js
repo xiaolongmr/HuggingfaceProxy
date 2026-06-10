@@ -2,7 +2,14 @@
  * 请求处理器
  */
 
-import { isAllowedUpstream, parseRequest, rewriteLocation } from './utils.js';
+import {
+    getBrowserCacheTtl,
+    getEdgeCacheTtl,
+    isAllowedUpstream,
+    parseRequest,
+    rewriteLocation,
+    shouldCacheProxyRequest
+} from './utils.js';
 import HOME_HTML from './templates/home.html';
 import HF_DOWNLOADER_SCRIPT from './scripts/hf_downloader.py';
 
@@ -40,9 +47,10 @@ export function handleDownloaderScript(hostname) {
  * 处理代理请求
  * @param {Request} request - 原始请求
  * @param {URL} url - 解析后的 URL
+ * @param {Record<string, string>} env - 环境变量
  * @returns {Promise<Response>}
  */
-export async function handleProxy(request, url) {
+export async function handleProxy(request, url, env = {}) {
     const pathname = url.pathname;
     const proxyOrigin = url.origin;
 
@@ -68,9 +76,14 @@ export async function handleProxy(request, url) {
     // 强制覆盖 Host 头
     newRequest.headers.set('Host', upstream);
 
+    const shouldCache = shouldCacheProxyRequest(request, upstream, path, env);
+    const fetchOptions = shouldCache
+        ? { cf: { cacheEverything: true, cacheTtl: getEdgeCacheTtl(env) } }
+        : undefined;
+
     try {
         // 4. 发起请求
-        const response = await fetch(newRequest);
+        const response = await fetch(newRequest, fetchOptions);
 
         // 5. 拦截并重写重定向
         if ([301, 302, 303, 307, 308].includes(response.status)) {
@@ -90,6 +103,19 @@ export async function handleProxy(request, url) {
         }
 
         // 6. 非重定向请求，直接返回
+        if (shouldCache && response.ok) {
+            const newHeaders = new Headers(response.headers);
+            if (!newHeaders.has('Cache-Control')) {
+                newHeaders.set('Cache-Control', `public, max-age=${getBrowserCacheTtl(env)}`);
+            }
+            newHeaders.set('X-HF-Proxy-Cache', `edge; ttl=${getEdgeCacheTtl(env)}`);
+            return new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: newHeaders
+            });
+        }
+
         return response;
 
     } catch (e) {

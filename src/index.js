@@ -13,6 +13,8 @@
  * - RESTRICT_BROWSER_ACCESS: 限制浏览器访问 (true/false)
  *   - true: 浏览器只能访问首页和脚本下载页面
  *   - false 或未设置: 不限制
+ * - EDGE_CACHE_TTL_SECONDS: 静态资源边缘缓存秒数，默认 604800 (7 天)
+ * - BROWSER_CACHE_TTL_SECONDS: 静态资源浏览器缓存秒数，默认 86400 (1 天)
  */
 
 import { handleHome, handleDownloaderScript, handleProxy } from './handlers.js';
@@ -43,7 +45,7 @@ export default {
 
             // 代理请求
             default:
-                return handleProxy(request, url);
+                return handleProxy(request, url, env);
         }
     }
 };

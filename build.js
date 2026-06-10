@@ -16,7 +16,7 @@ const textLoaderPlugin = {
     setup(build) {
         // 处理 .html 文件
         build.onLoad({ filter: /\.html$/ }, async (args) => {
-            const content = await fs.promises.readFile(args.path, 'utf8');
+            const content = (await fs.promises.readFile(args.path, 'utf8')).replace(/\r\n/g, '\n');
             return {
                 contents: `export default ${JSON.stringify(content)};`,
                 loader: 'js'
@@ -25,7 +25,7 @@ const textLoaderPlugin = {
 
         // 处理 .py 文件
         build.onLoad({ filter: /\.py$/ }, async (args) => {
-            const content = await fs.promises.readFile(args.path, 'utf8');
+            const content = (await fs.promises.readFile(args.path, 'utf8')).replace(/\r\n/g, '\n');
             return {
                 contents: `export default ${JSON.stringify(content)};`,
                 loader: 'js'

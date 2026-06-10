@@ -13,3 +13,17 @@ export const DEFAULT_UPSTREAM = 'huggingface.co';
 
 // 重定向前缀
 export const REDIRECT_PREFIX = 'redirect_to_';
+
+// 默认边缘缓存时间：7 天，可用环境变量 EDGE_CACHE_TTL_SECONDS 覆盖
+export const DEFAULT_EDGE_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+
+// 默认浏览器缓存时间：1 天，可用环境变量 BROWSER_CACHE_TTL_SECONDS 覆盖
+export const DEFAULT_BROWSER_CACHE_TTL_SECONDS = 60 * 60 * 24;
+
+// 仅缓存常见静态资源，避免误缓存 API 或动态页面
+export const STATIC_CACHE_EXTENSIONS = [
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.svg', '.ico',
+    '.css', '.js', '.mjs', '.json', '.txt', '.xml',
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+    '.mp4', '.webm', '.mp3', '.wav'
+];

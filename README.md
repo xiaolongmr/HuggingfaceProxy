@@ -116,6 +116,40 @@ https://zlcy-li.hf.space/
 > 部分 HF Space 对 `HEAD` 请求会返回 `405 Method Not Allowed`，但只要 `GET` 正常返回即可代理访问。
 > 如果 Space 页面里写死了其他绝对域名、WebSocket 或第三方 API 地址，浏览器可能仍会直连那些地址；单张图片、HTML 和普通静态资源反代最稳定。
 
+### 缓存 HF Space 图片
+
+Worker 会对 `*.hf.space` 和 `*.hf.co` 下的常见静态资源启用 Cloudflare 边缘缓存，包括图片、CSS、JS、字体、音视频等文件扩展名。默认缓存策略：
+
+| 缓存位置 | 默认 TTL | 环境变量 |
+|---------|---------|---------|
+| Cloudflare Edge | 7 天 | `EDGE_CACHE_TTL_SECONDS=604800` |
+| 浏览器 | 1 天 | `BROWSER_CACHE_TTL_SECONDS=86400` |
+
+如果图片生成后基本不会变化，可以把边缘缓存改成 30 天：
+
+```bash
+EDGE_CACHE_TTL_SECONDS=2592000
+```
+
+如果需要关闭 Worker 里的边缘缓存：
+
+```bash
+EDGE_CACHE_TTL_SECONDS=0
+```
+
+也可以在 Cloudflare Dashboard 里再加一条 Cache Rule：
+
+```text
+When incoming requests match:
+  Hostname equals your-proxy.com
+  URI Path starts with /redirect_to_
+
+Then:
+  Cache eligibility: Eligible for cache
+  Edge TTL: 7 days 或 1 month
+  Browser TTL: 1 day
+```
+
 ### 使用下载器脚本
 
 ```bash
@@ -204,6 +238,8 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 | 变量名 | 说明 | 可选值 |
 |--------|------|--------|
 | `RESTRICT_BROWSER_ACCESS` | 限制浏览器直接访问代理 | `true` / `false` (未设置默认为 `false`) |
+| `EDGE_CACHE_TTL_SECONDS` | 静态资源边缘缓存秒数 | 默认 `604800`，7 天；30 天为 `2592000`；`0` 为关闭 |
+| `BROWSER_CACHE_TTL_SECONDS` | 静态资源浏览器缓存秒数 | 默认 `86400`，1 天 |
 
 - `RESTRICT_BROWSER_ACCESS=true` 时，浏览器只能访问首页 (`/`) 和脚本下载页面 (`/hf_downloader.py`)，其他路径将被拒绝
 - 适用于希望限制浏览器直接下载，强制使用 Python 脚本的场景
