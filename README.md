@@ -7,6 +7,7 @@
 
 - **零配置使用** - 直接访问即可，所有请求自动转发到 HuggingFace
 - **智能重定向** - 自动处理 CDN 重定向，无需多域名配置
+- **HF Space 资源反代** - 支持 `*.hf.space` 图片、HTML 和静态资源代理
 - **下载器脚本** - 提供 Python 下载器，支持并行下载、断点续传、HF Cache 导入
 - **模块化架构** - 代码结构清晰，易于维护和扩展
 
@@ -32,16 +33,18 @@ hf_proxy/
 
 ## 🚀 快速开始
 
-### 部署到 Cloudflare Pages
+### 部署到 Cloudflare Workers
 
 1. Fork 本仓库
-2. 在 Cloudflare Dashboard 创建 Pages 项目，连接 GitHub 仓库
-3. 推送代码到 `main` 分支，GitHub Actions 会自动构建 `_worker.js`
-4. Cloudflare Pages 自动拉取最新代码并部署
+2. 在 Cloudflare Dashboard 创建 Worker，连接 GitHub 仓库
+3. 构建命令填写 `npm run build`
+4. 部署命令填写 `npx wrangler deploy`
+5. 根目录保持 `/`
+6. 推送代码到 `main` 分支后，Cloudflare 会自动构建并部署 Worker
 
-部署完成后，Cloudflare 会自动分配一个 `*.pages.dev` 域名，也可以在项目设置中绑定自定义域名。
+部署完成后，可以在 Worker 的路由或自定义域名中绑定自己的域名。
 
-> **注意**: `_worker.js` 已添加到 `.gitignore`，仅由 GitHub Actions 构建并强制提交。
+> **注意**: `_worker.js` 是构建产物，由 `npm run build` 自动生成。
 
 ### 本地开发
 
@@ -77,6 +80,41 @@ https://your-proxy.com/bert-base-uncased/resolve/main/config.json
 # API 调用
 https://your-proxy.com/api/models/bert-base-uncased
 ```
+
+### 反代 HF Space 图片和静态资源
+
+本项目允许代理 `*.hf.space` 的公开资源。将原始 HF Space 地址改写为：
+
+```bash
+https://your-proxy.com/redirect_to_{hf.space域名}/{路径}
+```
+
+例如，原始图片地址：
+
+```bash
+https://zlcy-chatsam-public.hf.space/images/2026/06/11/1781109413_718dfe93ca15afa2bc8a37910405a837.png
+```
+
+通过代理访问：
+
+```bash
+https://your-proxy.com/redirect_to_zlcy-chatsam-public.hf.space/images/2026/06/11/1781109413_718dfe93ca15afa2bc8a37910405a837.png
+```
+
+Space 项目入口也可以代理，例如你的项目：
+
+```bash
+https://your-proxy.com/redirect_to_zlcy-li.hf.space/
+```
+
+这会转发到：
+
+```bash
+https://zlcy-li.hf.space/
+```
+
+> 部分 HF Space 对 `HEAD` 请求会返回 `405 Method Not Allowed`，但只要 `GET` 正常返回即可代理访问。
+> 如果 Space 页面里写死了其他绝对域名、WebSocket 或第三方 API 地址，浏览器可能仍会直连那些地址；单张图片、HTML 和普通静态资源反代最稳定。
 
 ### 使用下载器脚本
 
@@ -145,6 +183,8 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 | `/api/models/xxx` | `huggingface.co/api/models/xxx` |
 | `/bert-base/resolve/main/config.json` | `huggingface.co/bert-base/resolve/main/config.json` |
 | `/redirect_to_cdn.hf.co/path/file` | `cdn.hf.co/path/file` |
+| `/redirect_to_zlcy-li.hf.space/` | `zlcy-li.hf.space/` |
+| `/redirect_to_xxx.hf.space/images/a.png` | `xxx.hf.space/images/a.png` |
 
 ### 重定向处理
 
@@ -159,7 +199,7 @@ tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 ### 环境变量
 
-在 Cloudflare Pages 设置中可以配置以下环境变量：
+在 Cloudflare Workers 设置中可以配置以下环境变量：
 
 | 变量名 | 说明 | 可选值 |
 |--------|------|--------|
@@ -184,6 +224,8 @@ export const DEFAULT_UPSTREAM = 'huggingface.co';
 // 重定向前缀
 export const REDIRECT_PREFIX = 'redirect_to_';
 ```
+
+除 `ALLOWED_UPSTREAM_DOMAINS` 中的精确域名外，`src/utils.js` 默认还允许所有 `*.hf.co` 和 `*.hf.space` 域名，用于 HuggingFace CDN 与 Space 公开资源代理。
 
 ## Star History
 
