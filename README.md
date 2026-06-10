@@ -120,7 +120,8 @@ https://zlcy-li.hf.space/
 ```
 
 > 部分 HF Space 对 `HEAD` 请求会返回 `405 Method Not Allowed`，但只要 `GET` 正常返回即可代理访问。
-> 如果 Space 页面里写死了其他绝对域名、WebSocket 或第三方 API 地址，浏览器可能仍会直连那些地址；单张图片、HTML 和普通静态资源反代最稳定。
+> Worker 会自动改写 HTML 中的根路径资源，例如 `/_next/static/app.js` 会变成 `/redirect_to_zlcy-li.hf.space/_next/static/app.js`。
+> 如果 Space 页面里写死了其他完整绝对域名、WebSocket 或第三方 API 地址，浏览器可能仍会直连那些地址；单张图片、HTML 和普通静态资源反代最稳定。
 
 ### 缓存 HF Space 图片
 

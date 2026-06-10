@@ -1,6 +1,6 @@
 /**
  * HuggingFace Proxy Worker
- * 构建时间: 2026-06-10T18:05:10.679Z
+ * 构建时间: 2026-06-10T18:07:40.910Z
  * 
  * 此文件由 build.js 自动生成，请勿手动编辑
  * 源代码位于 src/ 目录
@@ -103,9 +103,9 @@ function shouldCacheProxyRequest(request, upstream, path, env) {
   const isHfAssetHost = upstream.endsWith(".hf.space") || upstream.endsWith(".hf.co");
   return isHfAssetHost && isStaticCachePath(path);
 }
-function rewriteLocation(location, proxyOrigin) {
+function rewriteLocation(location, proxyOrigin, currentUpstream = DEFAULT_UPSTREAM) {
   try {
-    const locUrl = new URL(location);
+    const locUrl = new URL(location, `https://${currentUpstream}`);
     const locHost = locUrl.hostname;
     if (!isAllowedUpstream(locHost)) {
       return null;
@@ -119,6 +119,21 @@ function rewriteLocation(location, proxyOrigin) {
     console.error("Location parse error:", e);
     return null;
   }
+}
+function rewriteHtmlAssetPaths(html, upstream) {
+  if (upstream === DEFAULT_UPSTREAM) {
+    return html;
+  }
+  const proxyPrefix = `/${REDIRECT_PREFIX}${upstream}`;
+  return html.replace(/\b(href|src|action)=(["'])\/(?!\/)([^"']*)\2/g, (_match, attr, quote, path) => {
+    return `${attr}=${quote}${proxyPrefix}/${path}${quote}`;
+  }).replace(/\b(srcset)=(["'])([^"']*)\2/g, (_match, attr, quote, value) => {
+    const rewritten = value.split(",").map((part) => {
+      const trimmed = part.trimStart();
+      return trimmed.startsWith("/") && !trimmed.startsWith("//") ? part.replace(trimmed, `${proxyPrefix}${trimmed}`) : part;
+    }).join(",");
+    return `${attr}=${quote}${rewritten}${quote}`;
+  });
 }
 function isBrowserRequest(request) {
   const accept = request.headers.get("Accept") || "";
@@ -929,7 +944,7 @@ async function handleProxy(request, url, env = {}) {
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
       if (location) {
-        const newLocation = rewriteLocation(location, proxyOrigin);
+        const newLocation = rewriteLocation(location, proxyOrigin, upstream);
         if (newLocation) {
           const newHeaders = new Headers(response.headers);
           newHeaders.set("Location", newLocation);
@@ -940,6 +955,18 @@ async function handleProxy(request, url, env = {}) {
           });
         }
       }
+    }
+    const contentType = response.headers.get("Content-Type") || "";
+    if (response.ok && contentType.includes("text/html") && upstream !== "huggingface.co") {
+      const newHeaders = new Headers(response.headers);
+      newHeaders.delete("Content-Length");
+      newHeaders.delete("Content-Encoding");
+      newHeaders.set("Cache-Control", "no-cache");
+      return new Response(rewriteHtmlAssetPaths(await response.text(), upstream), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+      });
     }
     if (shouldCache && response.ok) {
       const newHeaders = new Headers(response.headers);

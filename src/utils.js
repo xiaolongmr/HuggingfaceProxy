@@ -145,11 +145,12 @@ export function shouldCacheProxyRequest(request, upstream, path, env) {
  * 重写重定向 Location
  * @param {string} location - 原始 Location
  * @param {string} proxyOrigin - 代理服务器的 origin
+ * @param {string} currentUpstream - 当前上游域名，用于处理相对重定向
  * @returns {string | null} - 重写后的 Location，如果不需要重写则返回 null
  */
-export function rewriteLocation(location, proxyOrigin) {
+export function rewriteLocation(location, proxyOrigin, currentUpstream = DEFAULT_UPSTREAM) {
     try {
-        const locUrl = new URL(location);
+        const locUrl = new URL(location, `https://${currentUpstream}`);
         const locHost = locUrl.hostname;
 
         // 检查是否是允许的上游域名
@@ -169,6 +170,36 @@ export function rewriteLocation(location, proxyOrigin) {
         console.error("Location parse error:", e);
         return null;
     }
+}
+
+/**
+ * 重写 HTML 中的根路径资源，让 Space 页面资源继续走代理
+ * @param {string} html - 原始 HTML
+ * @param {string} upstream - 上游域名
+ * @returns {string}
+ */
+export function rewriteHtmlAssetPaths(html, upstream) {
+    if (upstream === DEFAULT_UPSTREAM) {
+        return html;
+    }
+
+    const proxyPrefix = `/${REDIRECT_PREFIX}${upstream}`;
+    return html
+        .replace(/\b(href|src|action)=(["'])\/(?!\/)([^"']*)\2/g, (_match, attr, quote, path) => {
+            return `${attr}=${quote}${proxyPrefix}/${path}${quote}`;
+        })
+        .replace(/\b(srcset)=(["'])([^"']*)\2/g, (_match, attr, quote, value) => {
+            const rewritten = value
+                .split(',')
+                .map((part) => {
+                    const trimmed = part.trimStart();
+                    return trimmed.startsWith('/') && !trimmed.startsWith('//')
+                        ? part.replace(trimmed, `${proxyPrefix}${trimmed}`)
+                        : part;
+                })
+                .join(',');
+            return `${attr}=${quote}${rewritten}${quote}`;
+        });
 }
 
 /**

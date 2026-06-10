@@ -7,6 +7,7 @@ import {
     getEdgeCacheTtl,
     isAllowedUpstream,
     parseRequest,
+    rewriteHtmlAssetPaths,
     rewriteLocation,
     shouldCacheProxyRequest
 } from './utils.js';
@@ -89,7 +90,7 @@ export async function handleProxy(request, url, env = {}) {
         if ([301, 302, 303, 307, 308].includes(response.status)) {
             const location = response.headers.get('Location');
             if (location) {
-                const newLocation = rewriteLocation(location, proxyOrigin);
+                const newLocation = rewriteLocation(location, proxyOrigin, upstream);
                 if (newLocation) {
                     const newHeaders = new Headers(response.headers);
                     newHeaders.set('Location', newLocation);
@@ -103,6 +104,19 @@ export async function handleProxy(request, url, env = {}) {
         }
 
         // 6. 非重定向请求，直接返回
+        const contentType = response.headers.get('Content-Type') || '';
+        if (response.ok && contentType.includes('text/html') && upstream !== 'huggingface.co') {
+            const newHeaders = new Headers(response.headers);
+            newHeaders.delete('Content-Length');
+            newHeaders.delete('Content-Encoding');
+            newHeaders.set('Cache-Control', 'no-cache');
+            return new Response(rewriteHtmlAssetPaths(await response.text(), upstream), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: newHeaders
+            });
+        }
+
         if (shouldCache && response.ok) {
             const newHeaders = new Headers(response.headers);
             if (!newHeaders.has('Cache-Control')) {
